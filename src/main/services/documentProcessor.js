@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const pdf = require('pdf-parse');
 const mammoth = require('mammoth');
-const aiService = require('./aiService');
+const aiService = require('../ai');
 const storage = require('./storage');
 
 class DocumentProcessor {
@@ -52,7 +52,14 @@ class DocumentProcessor {
         
         let extractedText = '';
         if (config.selectedModel === 'gemini') {
-          extractedText = await aiService.callGeminiWithFallback(apiKey, transcriptionPrompt, base64Image);
+          const { GoogleGenerativeAI } = require('@google/generative-ai');
+          const genAI = new GoogleGenerativeAI(apiKey);
+          const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+          const result = await model.generateContent([
+            transcriptionPrompt,
+            { inlineData: { data: base64Image, mimeType: 'image/jpeg' } }
+          ]);
+          extractedText = result.response.text();
         } else if (config.selectedModel === 'openai') {
           const OpenAI = require('openai');
           const openai = new OpenAI({ apiKey });

@@ -5,4 +5,32 @@ dist/
 .env
 .env.*
 
-# Auto-analysis hook active
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# AI agent config
+.claude/
+CLAUDE.md
+AGENTS.md
+
+# Scratch/test scripts
+scratch/
+
+# Build artifacts
+*.exe
+*.blockmap
+builder-debug.yml
+win-unpacked/
+
+# Temp files
+*.tmp
+*.temp
