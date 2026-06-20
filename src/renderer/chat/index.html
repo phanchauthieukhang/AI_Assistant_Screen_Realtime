@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ScreenAI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Lora:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Custom Frameless Titlebar -->
+  <header class="titlebar">
+    <div class="titlebar-drag-region">
+      <div class="brand">
+        <svg class="brand-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="3"/><path d="M8 21H16"/><path d="M12 17V21"/><circle cx="12" cy="10" r="3"/></svg>
+        <span>ScreenAI</span>
+      </div>
+    </div>
+    <div class="titlebar-controls">
+      <button id="btn-minimize" class="window-btn" title="Thu nhỏ">─</button>
+      <button id="btn-maximize" class="window-btn" title="Phóng to">□</button>
+      <button id="btn-close" class="window-btn close-btn" title="Đóng">✕</button>
+    </div>
+  </header>
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <button id="btn-new-chat" class="btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Đoạn chat mới
+        </button>
+      </div>
+      
+      <div class="conversation-list" id="conversation-list">
+        <!-- Conversation items will be rendered here -->
+      </div>
+      
+      <div class="sidebar-footer">
+        <button id="btn-open-settings" class="btn-secondary outline">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Cấu hình
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Chat Area -->
+    <main class="chat-area">
+      <div class="chat-header">
+        <h2 id="current-chat-title">Đoạn chat mới</h2>
+        <div class="chat-header-controls">
+          <div class="model-selector-wrapper">
+            <button id="btn-model-selector" class="model-selector-btn">
+              <span id="current-model-name">Gemini 3.5 Flash</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+            <div id="model-popup" class="model-popup">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-messages" id="chat-messages">
+        <!-- Messages rendered here -->
+        <div class="welcome-screen" id="welcome-screen">
+          <div class="welcome-icon">✦</div>
+          <h2>ScreenAI Assistant</h2>
+          <p>Tôi có thể giúp bạn đọc màn hình, giải bài tập và nghe giọng nói thời gian thực.</p>
+        </div>
+        
+        <div id="typing-indicator" class="typing-indicator" style="display: none;">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+
+      <div class="chat-input-container">
+        <!-- Attachments Preview Area -->
+        <div class="attachments-preview" id="attachments-preview"></div>
+        
+        <div class="chat-input-wrapper">
+          <button id="btn-attach" class="action-btn" title="Đính kèm tài liệu (Hình ảnh, PDF, DOCX, TXT)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          </button>
+          
+          <textarea id="chat-input" placeholder="Nhập câu hỏi hoặc dán hình ảnh (Ctrl+V)..." rows="1"></textarea>
+          
+          <div class="right-actions">
+            <button id="btn-toggle-screen" class="action-btn tool-btn" title="Bật/tắt cửa sổ Overlay (Để chụp thủ công hoặc tự động)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </button>
+            <button id="btn-toggle-listen" class="action-btn tool-btn" title="Bật tự động nghe giọng nói (Ctrl+Shift+V)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>
+            </button>
+            <button id="btn-send" class="send-btn" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Settings Panel (Slide-in) -->
+    <div class="settings-overlay" id="settings-overlay"></div>
+    <div class="settings-panel" id="settings-panel">
+      <div class="settings-header">
+        <h3>Cấu hình hệ thống</h3>
+        <button id="btn-close-settings" class="close-btn">✕</button>
+      </div>
+      
+      <div class="settings-content">
+        <!-- AI Config -->
+        <div class="setting-group">
+          <h4>Mô hình AI & API Keys</h4>
+          <div class="api-config-list">
+            <label class="radio-card">
+              <input type="radio" name="selectedModel" value="gemini" checked>
+              <div class="card-content">Google Gemini</div>
+            </label>
+            <input type="password" id="key-gemini" class="api-input" placeholder="Nhập API Key Gemini">
+            
+            <label class="radio-card">
+              <input type="radio" name="selectedModel" value="openai">
+              <div class="card-content">OpenAI GPT-4o</div>
+            </label>
+            <input type="password" id="key-openai" class="api-input" placeholder="Nhập API Key OpenAI">
+            
+            <label class="radio-card">
+              <input type="radio" name="selectedModel" value="claude">
+              <div class="card-content">Anthropic Claude</div>
+            </label>
+            <input type="password" id="key-claude" class="api-input" placeholder="Nhập API Key Claude">
+          </div>
+        </div>
+
+        <!-- System Prompt -->
+        <div class="setting-group">
+          <h4>System Prompt (Hướng dẫn AI)</h4>
+          <textarea id="system-prompt" class="prompt-input" rows="4"></textarea>
+        </div>
+
+        <!-- Screen Capture Config -->
+        <div class="setting-group">
+          <h4>Tự động Chụp Màn Hình</h4>
+          <div class="input-row">
+            <label>Chu kỳ chụp (giây)</label>
+            <input type="number" id="capture-interval" min="2" max="60" value="5" class="num-input">
+          </div>
+          <div class="input-row">
+            <label>Chế độ chụp</label>
+            <select id="capture-mode" class="select-input">
+              <option value="fullscreen">Toàn màn hình</option>
+              <option value="region">Chọn vùng</option>
+            </select>
+          </div>
+          <button id="btn-select-region" class="btn-secondary small">Vẽ lại vùng chụp</button>
+        </div>
+
+        <!-- Audio VAD Config -->
+        <div class="setting-group">
+          <h4>Tự động Nghe & Giải (VAD)</h4>
+          <div class="input-row">
+            <label>Nguồn âm thanh</label>
+            <select id="audio-source" class="select-input">
+              <option value="mic">Microphone</option>
+              <option value="system">Âm thanh hệ thống</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      <div class="settings-footer">
+        <button id="btn-save-settings" class="btn-primary full-width">Lưu Cấu Hình</button>
+        <span id="save-status" class="status-msg"></span>
+      </div>
+    </div>
+  </div>
+
+  <input type="file" id="file-input" style="display:none;" accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.webp">
+  
+  <script src="renderer.js"></script>
+</body>
+</html>

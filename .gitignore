@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.gitnexus/
+*.log
+.env
+.env.*

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Screen AI Overlay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="theme-dark">
+  <div class="overlay-container">
+    <!-- Draggable Header -->
+    <header class="drag-header">
+      <div class="drag-info">
+        <span class="drag-handle-dots">⋮⋮</span>
+        <span class="status-indicator" id="status-label">Sẵn sàng</span>
+        <span class="auto-badge" id="auto-badge" style="display:none;">AUTO</span>
+        <span class="listen-badge" id="listen-badge" style="display:none;">LISTEN</span>
+      </div>
+      <div class="action-buttons">
+        <button id="btn-capture-overlay" class="ctrl-btn" title="Chụp & Phân tích ngay (Ctrl+Shift+S)">📸</button>
+        <button id="btn-auto-capture" class="ctrl-btn" title="Bật/Tắt chụp tự động (Ctrl+Shift+A)">⏱️</button>
+        <button id="btn-record" class="ctrl-btn" title="Tự động Nghe & Giải khi im lặng (Ctrl+Shift+V)">🎙️</button>
+        <button id="btn-theme" class="ctrl-btn" title="Chuyển nền sáng/tối">🌓</button>
+        <button id="btn-close" class="ctrl-btn" title="Đóng cửa sổ">✕</button>
+      </div>
+    </header>
+
+    <!-- Content Area (Non-draggable for scrolling) -->
+    <main class="content-viewport" id="content-viewport">
+      <div class="answer-box" id="answer-box">
+        <div class="welcome-message">
+          <h3>Trợ lý AI Đọc Màn Hình</h3>
+          <p>Bắt đầu phiên học tập từ bảng điều khiển để hiển thị đáp án tại đây.</p>
+          <div class="shortcut-tip">
+            <span>Phím tắt chụp nhanh:</span>
+            <kbd>Ctrl + Shift + S</kbd>
+        </div>
+      </div>
+    </main>
+
+    <footer class="overlay-chat-bar">
+      <input type="text" id="overlay-chat-input" placeholder="Nhập tin nhắn..." />
+      <button id="overlay-chat-send">➤</button>
+    </footer>
+
+    <!-- Footer resize handle visual guide -->
+    <div class="footer-resize"></div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+{
+  "name": "ai-screen-reader",
+  "version": "1.0.0",
+  "description": "AI Screen Reader & Assistant",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "keywords": [
+    "electron",
+    "ai",
+    "screen-reader",
+    "assistant"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.22.0",
+    "@google/generative-ai": "^0.13.0",
+    "@langchain/classic": "^1.0.36",
+    "@langchain/community": "^1.1.29",
+    "@langchain/core": "^1.2.0",
+    "@langchain/google-genai": "^2.2.0",
+    "@langchain/textsplitters": "^1.0.1",
+    "langchain": "^1.5.0",
+    "mammoth": "^1.12.0",
+    "openai": "^4.51.0",
+    "pdf-parse": "^1.1.4"
+  },
+  "devDependencies": {
+    "electron": "^28.2.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.screenai.app",
+    "productName": "ScreenAI",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "asar": true
+  }
+}
