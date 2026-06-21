@@ -53,6 +53,7 @@ let currentConfig = {};
 let conversations = [];
 let activeConversationId = null;
 let pendingAttachments = []; // Array of {type, data/base64, name, mimeType}
+let messageObserver = null;
 
 // --- Window Controls ---
 el.btnMin.addEventListener('click', () => window.api.windowMinimize());
@@ -60,7 +61,34 @@ el.btnMax.addEventListener('click', () => window.api.windowMaximize());
 el.btnClose.addEventListener('click', () => window.api.windowClose());
 
 // --- Initialization ---
+function initMessageObserver() {
+  const root = document.getElementById('chat-messages');
+  messageObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        // Find corresponding minimap item
+        const minimapItem = document.querySelector(`.minimap-item[data-target-id="${entry.target.id}"]`);
+        if (minimapItem) {
+          // Remove active from all others
+          document.querySelectorAll('.minimap-item').forEach(el => {
+            el.classList.remove('active');
+            el.querySelector('.minimap-marker').classList.remove('active');
+          });
+          minimapItem.classList.add('active');
+          const marker = minimapItem.querySelector('.minimap-marker');
+          if (marker) marker.classList.add('active');
+        }
+      }
+    });
+  }, {
+    root: root,
+    rootMargin: '-20% 0px -20% 0px',
+    threshold: 0
+  });
+}
+
 async function init() {
+  initMessageObserver();
   currentConfig = await window.api.getConfig();
   loadConfigToUI(currentConfig);
   
@@ -354,7 +382,11 @@ async function loadConversation(id) {
   const fullConv = await window.api.getConversation(id);
   el.chatTitle.textContent = fullConv ? fullConv.title : 'Đoạn chat mới';
   
+  if (messageObserver) messageObserver.disconnect();
+  
   el.chatMessages.innerHTML = '';
+  const minimap = document.getElementById('chat-minimap');
+  if (minimap) minimap.innerHTML = '';
   
   if (fullConv && fullConv.messages && fullConv.messages.length > 0) {
     fullConv.messages.forEach(msg => appendMessage(msg));
@@ -450,8 +482,58 @@ function appendMessage(msg) {
     contentDiv.appendChild(textDiv);
   }
 
+  const msgId = 'msg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+  wrapper.id = msgId;
   wrapper.appendChild(contentDiv);
   el.chatMessages.appendChild(wrapper);
+
+  if (msg.role === 'user') {
+    addMinimapItem(msg, msgId);
+    if (messageObserver) {
+      messageObserver.observe(wrapper);
+    }
+  }
+}
+
+function addMinimapItem(msg, elementId) {
+  const minimap = document.getElementById('chat-minimap');
+  if (!minimap) return;
+  
+  const item = document.createElement('div');
+  item.className = 'minimap-item';
+  item.setAttribute('data-target-id', elementId);
+  item.onclick = () => {
+    const target = document.getElementById(elementId);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target.style.transition = 'background-color 0.5s';
+      target.style.backgroundColor = 'rgba(138, 154, 134, 0.2)'; // highlight color
+      setTimeout(() => {
+        target.style.backgroundColor = 'transparent';
+      }, 1000);
+    }
+  };
+  
+  const marker = document.createElement('div');
+  marker.className = 'minimap-marker';
+  
+  const text = document.createElement('div');
+  text.className = 'minimap-text';
+  
+  let preview = msg.content || '';
+  if (!preview && msg.attachments && msg.attachments.length > 0) {
+    preview = '[Đính kèm]';
+  }
+  preview = preview.replace(/[#*`_~]/g, '').trim();
+  text.textContent = preview || '...';
+  text.title = preview;
+  
+  item.appendChild(marker);
+  item.appendChild(text);
+  minimap.appendChild(item);
+  
+  // Auto-scroll minimap to bottom to show the newest items
+  minimap.scrollTop = minimap.scrollHeight;
 }
 
 function scrollToBottom() {
@@ -465,7 +547,18 @@ el.fileInput.addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
   
-  el.statusText.textContent = 'Đang xử lý file...';
+  // Show lively loading preview
+  const loadingDiv = document.createElement('div');
+  loadingDiv.className = 'preview-item loading';
+  loadingDiv.innerHTML = `
+    <div class="doc-icon">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+    </div>
+    <span class="doc-name">Đang tải: ${file.name}...</span>
+    <div class="progress-bar"></div>
+  `;
+  el.previewArea.appendChild(loadingDiv);
+
   const result = await window.api.uploadChatAttachment(file.path);
   if (result.success) {
     pendingAttachments.push(result.attachment);
@@ -473,9 +566,9 @@ el.fileInput.addEventListener('change', async (e) => {
     el.chatInput.focus();
     updateSendButton();
   } else {
+    if (loadingDiv.parentNode) loadingDiv.parentNode.removeChild(loadingDiv);
     alert('Lỗi đính kèm: ' + result.error);
   }
-  el.statusText.textContent = 'Sẵn sàng';
   e.target.value = ''; // reset
 });
 
@@ -511,13 +604,20 @@ function renderPreviews() {
     if (att.type === 'image') {
       const img = document.createElement('img');
       img.src = `data:${att.mimeType || 'image/jpeg'};base64,${att.base64}`;
+      img.style.cursor = 'zoom-in';
+      img.onclick = () => showImageViewer(img.src);
       div.appendChild(img);
     } else {
-      const span = document.createElement('span');
-      span.className = 'doc-name';
-      span.textContent = att.fileName || 'Document';
-      div.appendChild(span);
+      const icon = document.createElement('div');
+      icon.className = 'doc-icon';
+      icon.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>`;
+      div.appendChild(icon);
     }
+    
+    const span = document.createElement('span');
+    span.className = 'doc-name';
+    span.textContent = att.fileName || 'Document';
+    div.appendChild(span);
     
     const delBtn = document.createElement('button');
     delBtn.className = 'btn-remove-preview';
@@ -537,6 +637,33 @@ function updateSendButton() {
   const hasText = el.chatInput.value.trim().length > 0;
   const hasAtt = pendingAttachments.length > 0;
   el.btnSend.disabled = !(hasText || hasAtt);
+}
+
+function showImageViewer(src) {
+  const overlay = document.createElement('div');
+  overlay.className = 'image-viewer-overlay';
+  overlay.innerHTML = `
+    <div class="image-viewer-modal" onclick="event.stopPropagation()">
+      <div class="image-viewer-header">
+        <span style="font-weight: 500; font-size: 14px;">Xem hình ảnh</span>
+        <button class="image-viewer-close">✕</button>
+      </div>
+      <div class="image-viewer-body">
+        <img src="${src}" class="image-viewer-img" />
+      </div>
+    </div>
+  `;
+  
+  const closeBtn = overlay.querySelector('.image-viewer-close');
+  closeBtn.onclick = () => {
+    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+  };
+  
+  overlay.onclick = () => {
+    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+  };
+  
+  document.body.appendChild(overlay);
 }
 
 el.chatInput.addEventListener('input', () => {

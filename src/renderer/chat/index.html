@@ -64,16 +64,23 @@
         </div>
       </div>
 
-      <div class="chat-messages" id="chat-messages">
-        <!-- Messages rendered here -->
-        <div class="welcome-screen" id="welcome-screen">
-          <div class="welcome-icon">✦</div>
-          <h2>ScreenAI Assistant</h2>
-          <p>Tôi có thể giúp bạn đọc màn hình, giải bài tập và nghe giọng nói thời gian thực.</p>
+      <div class="chat-body">
+        <div class="chat-messages" id="chat-messages">
+          <!-- Messages rendered here -->
+          <div class="welcome-screen" id="welcome-screen">
+            <div class="welcome-icon">✦</div>
+            <h2>ScreenAI Assistant</h2>
+            <p>Tôi có thể giúp bạn đọc màn hình, giải bài tập và nghe giọng nói thời gian thực.</p>
+          </div>
+          
+          <div id="typing-indicator" class="typing-indicator d-none">
+            <span></span><span></span><span></span>
+          </div>
         </div>
-        
-        <div id="typing-indicator" class="typing-indicator" style="display: none;">
-          <span></span><span></span><span></span>
+
+        <!-- Minimap / Message Log Hover Area -->
+        <div class="chat-minimap" id="chat-minimap">
+          <!-- Rendered by JS -->
         </div>
       </div>
 
@@ -85,6 +92,7 @@
           <button id="btn-attach" class="action-btn" title="Đính kèm tài liệu (Hình ảnh, PDF, DOCX, TXT)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
           </button>
+          <input type="file" id="file-input" class="d-none" accept="image/*,.pdf,.doc,.docx,.txt" title="Chọn file đính kèm" />
           
           <textarea id="chat-input" placeholder="Nhập câu hỏi hoặc dán hình ảnh (Ctrl+V)..." rows="1"></textarea>
           
@@ -95,7 +103,7 @@
             <button id="btn-toggle-listen" class="action-btn tool-btn" title="Bật tự động nghe giọng nói (Ctrl+Shift+V)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>
             </button>
-            <button id="btn-send" class="send-btn" disabled>
+            <button id="btn-send" class="send-btn" disabled title="Gửi tin nhắn">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             </button>
           </div>
@@ -139,7 +147,7 @@
         <!-- System Prompt -->
         <div class="setting-group">
           <h4>System Prompt (Hướng dẫn AI)</h4>
-          <textarea id="system-prompt" class="prompt-input" rows="4"></textarea>
+          <textarea id="system-prompt" class="prompt-input" rows="4" title="System Prompt" placeholder="Nhập câu prompt điều hướng AI..."></textarea>
         </div>
 
         <!-- Screen Capture Config -->
@@ -147,11 +155,11 @@
           <h4>Tự động Chụp Màn Hình</h4>
           <div class="input-row">
             <label>Chu kỳ chụp (giây)</label>
-            <input type="number" id="capture-interval" min="2" max="60" value="5" class="num-input">
+            <input type="number" id="capture-interval" min="2" max="60" value="5" class="num-input" title="Chu kỳ chụp (giây)" placeholder="Giây">
           </div>
           <div class="input-row">
             <label>Chế độ chụp</label>
-            <select id="capture-mode" class="select-input">
+            <select id="capture-mode" class="select-input" title="Chế độ chụp">
               <option value="fullscreen">Toàn màn hình</option>
               <option value="region">Chọn vùng</option>
             </select>
@@ -164,7 +172,7 @@
           <h4>Tự động Nghe & Giải (VAD)</h4>
           <div class="input-row">
             <label>Nguồn âm thanh</label>
-            <select id="audio-source" class="select-input">
+            <select id="audio-source" class="select-input" title="Nguồn âm thanh">
               <option value="mic">Microphone</option>
               <option value="system">Âm thanh hệ thống</option>
             </select>
@@ -179,7 +187,6 @@
     </div>
   </div>
 
-  <input type="file" id="file-input" style="display:none;" accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.webp">
   
   <script src="renderer.js"></script>
 </body>

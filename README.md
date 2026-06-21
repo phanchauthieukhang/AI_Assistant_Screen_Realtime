@@ -14,6 +14,7 @@ Phần mềm chụp và đọc màn hình thời gian thực sử dụng các m�
 ## Hệ thống Phím tắt Toàn cục (Global Hotkeys)
 
 Bạn có thể điều khiển ứng dụng khi đang ở trên bất kỳ trình duyệt hay game nào:
+
 - `Ctrl + Shift + S`: Chụp màn hình và trả lời ngay lập tức.
 - `Ctrl + Shift + A`: Bật / Tắt chế độ chụp tự động.
 - `Ctrl + Shift + H`: Ẩn / Hiện nhanh cửa sổ hiển thị overlay.
@@ -24,10 +25,13 @@ Bạn có thể điều khiển ứng dụng khi đang ở trên bất kỳ trì
 1. Đảm bảo máy tính đã cài đặt [Node.js](https://nodejs.org/).
 2. Tải mã nguồn về máy.
 3. Cài đặt các thư viện phụ thuộc:
+
    ```bash
    npm install
    ```
+
 4. Khởi chạy ứng dụng:
+
    ```bash
    npm start
    ```
