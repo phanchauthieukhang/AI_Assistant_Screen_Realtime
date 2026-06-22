@@ -217,6 +217,42 @@ class Storage {
     this.saveConversations(this.conversations);
     return msg;
   }
+
+  branchConversation(conversationId, messageId) {
+    const conv = this.getConversation(conversationId);
+    if (!conv) return null;
+
+    const msgIndex = conv.messages.findIndex(m => m.id === messageId);
+    if (msgIndex === -1) return null;
+
+    const branchedMessages = conv.messages.slice(0, msgIndex + 1);
+    
+    // Deep clone the messages so they are independent
+    const clonedMessages = JSON.parse(JSON.stringify(branchedMessages));
+
+    const newConv = this.createConversation();
+    newConv.title = conv.title + ' (Nhánh)';
+    newConv.messages = clonedMessages;
+
+    this.saveConversations(this.conversations);
+    return newConv;
+  }
+
+  deleteMessage(conversationId, messageId) {
+    const conv = this.getConversation(conversationId);
+    if (!conv) return false;
+
+    const msgIndex = conv.messages.findIndex(m => m.id === messageId);
+    if (msgIndex === -1) return false;
+
+    // Xóa tin nhắn và tất cả các tin nhắn sau đó nếu cần? 
+    // Trong Giai đoạn 1 (Overwrite in place), ta chỉ xóa chính tin nhắn đó (thường là tin nhắn cuối)
+    conv.messages.splice(msgIndex, 1);
+    conv.updatedAt = new Date().toISOString();
+    
+    this.saveConversations(this.conversations);
+    return true;
+  }
 }
 
 module.exports = new Storage();

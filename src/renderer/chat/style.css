@@ -637,17 +637,18 @@ body {
 /* Chat Bubbles */
 .message {
   display: flex;
+  flex-direction: column;
   width: 100%;
   max-width: 850px;
   align-self: center;
 }
 
 .message.user {
-  justify-content: flex-end;
+  align-items: flex-end;
 }
 
 .message.assistant {
-  justify-content: flex-start;
+  align-items: flex-start;
 }
 
 .message-content {
@@ -902,6 +903,11 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.attachment-img {
+  max-width: 100%;
+  border-radius: var(--radius-md);
 }
 
 .send-btn {
@@ -1173,4 +1179,41 @@ body {
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+/* Message Actions (Branch, Regenerate) */
+.message-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  justify-content: flex-start;
+}
+
+.message.user .message-actions {
+  justify-content: flex-end;
+}
+
+.message:hover .message-actions {
+  opacity: 1;
+}
+
+.msg-action-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.msg-action-btn:hover {
+  background: rgba(0,0,0,0.05);
+  color: var(--text-main);
 }

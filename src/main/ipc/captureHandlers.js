@@ -9,6 +9,7 @@ const { createRegionWindow, getRegionWindow } = require('../windows/regionWindow
 let autoCaptureIntervalId = null;
 let isAutoCapturingState = false;
 let isAutoListeningState = false;
+let isManualSTTState = false;
 let isProcessing = false;
 let activeConversationId = null;
 
@@ -170,6 +171,20 @@ function stopAutoListen() {
 function isAutoCapturing() { return isAutoCapturingState; }
 function isAutoListening() { return isAutoListeningState; }
 
+function toggleManualSTT() {
+  isManualSTTState = !isManualSTTState;
+  const overlayWindow = getOverlayWindow();
+  if (overlayWindow) {
+    overlayWindow.webContents.send('manual-stt-change', isManualSTTState);
+  } else if (isManualSTTState) {
+    createOverlayWindow();
+    setTimeout(() => {
+      const w = getOverlayWindow();
+      if (w) w.webContents.send('manual-stt-change', isManualSTTState);
+    }, 500);
+  }
+}
+
 function restartAutoCapture() {
   if (isAutoCapturingState) {
     stopAutoCapture();
@@ -201,10 +216,12 @@ function registerCaptureHandlers() {
     return sources.map(s => ({ id: s.id, name: s.name }));
   });
 
-  ipcMain.handle('process-audio', async (event, { base64Audio, mimeType }) => {
+
+
+  ipcMain.handle('process-stt', async (event, text) => {
     if (isProcessing) return { success: false, error: 'Bận xử lý...' };
     isProcessing = true;
-    updateStatus('Đang phân tích âm thanh & hình ảnh...');
+    updateStatus('Đang chụp ảnh & Gửi AI...');
     
     try {
       const config = storage.getConfig();
@@ -232,13 +249,16 @@ function registerCaptureHandlers() {
          if (chatWindow) chatWindow.webContents.send('conversation-created', newConv);
       }
 
-      const userMsg = storage.addMessage(activeConversationId, 'user', '(Hỏi bằng giọng nói)', [
-        { type: 'image', base64: base64Image, mimeType: 'image/jpeg' },
-        { type: 'audio', base64: base64Audio, mimeType }
+      const userMsg = storage.addMessage(activeConversationId, 'user', text, [
+        { type: 'image', base64: base64Image, mimeType: 'image/jpeg' }
       ]);
       if (chatWindow) chatWindow.webContents.send('new-chat-message', { conversationId: activeConversationId, message: userMsg });
 
-      const answer = await aiService.processAudioRequest(config, base64Audio, base64Image, mimeType);
+      // Build context if needed, but aiService.processRequest handles chat history
+      const conv = storage.getConversation(activeConversationId);
+      const history = conv ? conv.messages : [];
+      
+      const answer = await aiService.processChatMessage(config, text, [{ type: 'image', base64: base64Image, mimeType: 'image/jpeg' }], history);
       
       const aiMsg = storage.addMessage(activeConversationId, 'assistant', answer);
       if (chatWindow) chatWindow.webContents.send('new-chat-message', { conversationId: activeConversationId, message: aiMsg });
@@ -287,6 +307,7 @@ module.exports = {
   restartAutoCapture,
   isAutoCapturing,
   isAutoListening,
+  toggleManualSTT,
   setActiveConversation,
   getActiveConversation,
   updateStatus

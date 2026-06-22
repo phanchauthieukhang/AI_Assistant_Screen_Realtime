@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('api', {
   toggleAutoListen: () => ipcRenderer.invoke('toggle-auto-listen'),
   getDesktopSources: () => ipcRenderer.invoke('get-desktop-sources'),
   processAudio: (data) => ipcRenderer.invoke('process-audio', data),
+  processSTT: (text) => ipcRenderer.invoke('process-stt', text),
   startRegionSelection: () => ipcRenderer.invoke('start-region-selection'),
   sendRegionCaptured: (bounds) => ipcRenderer.send('region-captured', bounds),
   sendRegionCancel: () => ipcRenderer.send('region-cancel'),
@@ -33,6 +34,8 @@ contextBridge.exposeInMainWorld('api', {
   getModelCatalog: () => ipcRenderer.invoke('get-model-catalog'),
   pinConversation: (id, pinned) => ipcRenderer.invoke('pin-conversation', { id, pinned }),
   sendOverlayChat: (text) => ipcRenderer.invoke('send-overlay-chat', text),
+  branchConversation: (conversationId, messageId) => ipcRenderer.invoke('chat:branch', conversationId, messageId),
+  regenerateMessage: (conversationId, messageId) => ipcRenderer.invoke('chat:regenerate', conversationId, messageId),
 
   // Listeners
   onNewAnswer: (callback) => {
@@ -59,6 +62,11 @@ contextBridge.exposeInMainWorld('api', {
     const subscription = (event, region) => callback(region);
     ipcRenderer.on('region-selected', subscription);
     return () => ipcRenderer.removeListener('region-selected', subscription);
+  },
+  onManualSTTChange: (callback) => {
+    const subscription = (event, isListening) => callback(isListening);
+    ipcRenderer.on('manual-stt-change', subscription);
+    return () => ipcRenderer.removeListener('manual-stt-change', subscription);
   },
   
   // Chat specific listeners

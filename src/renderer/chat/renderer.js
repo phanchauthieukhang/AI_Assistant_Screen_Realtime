@@ -140,11 +140,6 @@ async function init() {
     else el.btnToggleScreen.classList.remove('active');
   });
 
-  window.api.onListenStatusChange((isListening) => {
-    if (isListening) el.btnToggleListen.classList.add('active');
-    else el.btnToggleListen.classList.remove('active');
-  });
-
   // Model Selector Toggle
   el.btnModelSelector.addEventListener('click', async (e) => {
     e.stopPropagation();
@@ -468,7 +463,7 @@ function appendMessage(msg) {
       } else if (att.type === 'document' || att.type === 'audio') {
         const doc = document.createElement('div');
         doc.className = 'attachment-doc';
-        doc.innerHTML = `📎 ${att.fileName || (att.type === 'audio' ? 'Đoạn ghi âm' : 'Tài liệu')}`;
+        doc.innerHTML = `📎 ${att.fileName || 'Tài liệu'}`;
         attContainer.appendChild(doc);
       }
     });
@@ -482,13 +477,58 @@ function appendMessage(msg) {
     contentDiv.appendChild(textDiv);
   }
 
-  const msgId = 'msg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-  wrapper.id = msgId;
+  const domId = msg.id || ('msg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9));
+  wrapper.id = domId;
   wrapper.appendChild(contentDiv);
+  
+  // -- Message Actions (Branch, Regenerate) --
+  if (msg.id) { // Only show actions for saved messages
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'message-actions';
+
+    // Branch Button
+    const branchBtn = document.createElement('button');
+    branchBtn.className = 'msg-action-btn branch-btn';
+    branchBtn.innerHTML = '⎇';
+    branchBtn.title = 'Tạo nhánh mới từ đây';
+    branchBtn.onclick = async () => {
+      if(!activeConversationId) return;
+      const res = await window.api.branchConversation(activeConversationId, msg.id);
+      if(res && res.success) {
+        // Reload into the new branch
+        conversations = await window.api.getConversations();
+        loadConversation(res.conversationId);
+      } else {
+        alert(res?.error || 'Không thể rẽ nhánh');
+      }
+    };
+    actionsDiv.appendChild(branchBtn);
+
+    // Regenerate Button
+    if (msg.role === 'assistant') {
+      const regenBtn = document.createElement('button');
+      regenBtn.className = 'msg-action-btn regen-btn';
+      regenBtn.innerHTML = '🔄';
+      regenBtn.title = 'Tạo lại câu trả lời';
+      regenBtn.onclick = async () => {
+        if(!activeConversationId) return;
+        const res = await window.api.regenerateMessage(activeConversationId, msg.id);
+        if(res && res.success) {
+          conversations = await window.api.getConversations();
+          loadConversation(res.conversationId);
+        } else {
+          alert(res?.error || 'Lỗi tạo lại');
+        }
+      };
+      actionsDiv.appendChild(regenBtn);
+    }
+    wrapper.appendChild(actionsDiv);
+  }
+
   el.chatMessages.appendChild(wrapper);
 
   if (msg.role === 'user') {
-    addMinimapItem(msg, msgId);
+    addMinimapItem(msg, domId);
     if (messageObserver) {
       messageObserver.observe(wrapper);
     }
@@ -715,7 +755,74 @@ async function sendMessage() {
 
 // --- Tools ---
 el.btnToggleScreen.addEventListener('click', () => window.api.toggleOverlay());
-el.btnToggleListen.addEventListener('click', () => window.api.toggleAutoListen());
+
+// Dictation STT feature for chat input
+let dictationRecognition = null;
+let isDictating = false;
+
+function initDictation() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) return null;
+  const rc = new SpeechRecognition();
+  rc.continuous = true;
+  rc.interimResults = true;
+  rc.lang = 'vi-VN';
+  
+  let finalDictationText = '';
+  
+  rc.onstart = () => {
+    isDictating = true;
+    el.btnToggleListen.classList.add('active');
+    finalDictationText = el.chatInput.value; 
+    if (finalDictationText && !finalDictationText.endsWith(' ')) finalDictationText += ' ';
+  };
+  
+  rc.onresult = (event) => {
+    let interim = '';
+    let latestFinal = '';
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+      if (event.results[i].isFinal) {
+        latestFinal += event.results[i][0].transcript + ' ';
+      } else {
+        interim += event.results[i][0].transcript;
+      }
+    }
+    finalDictationText += latestFinal;
+    el.chatInput.value = finalDictationText + interim;
+    el.chatInput.style.height = 'auto';
+    el.chatInput.style.height = el.chatInput.scrollHeight + 'px';
+    updateSendButton();
+  };
+  
+  rc.onerror = (e) => {
+    console.error("Dictation error", e);
+    isDictating = false;
+    el.btnToggleListen.classList.remove('active');
+  };
+  
+  rc.onend = () => {
+    isDictating = false;
+    el.btnToggleListen.classList.remove('active');
+  };
+  
+  return rc;
+}
+
+el.btnToggleListen.addEventListener('click', () => {
+  if (!dictationRecognition) {
+    dictationRecognition = initDictation();
+    if (!dictationRecognition) {
+      alert("Trình duyệt không hỗ trợ Web Speech API.");
+      return;
+    }
+  }
+  
+  if (isDictating) {
+    dictationRecognition.stop();
+  } else {
+    try { dictationRecognition.start(); } catch(e){}
+  }
+});
 
 
 // --- Settings Panel ---

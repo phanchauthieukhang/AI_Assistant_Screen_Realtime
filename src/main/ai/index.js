@@ -2,7 +2,6 @@ const { getModelCatalog } = require('./modelCatalog');
 const { askGemini, askGeminiWithAudio } = require('./providers/gemini');
 const { askOpenAI, askOpenAIWithText } = require('./providers/openai');
 const { askClaude, askClaudeWithText } = require('./providers/claude');
-const { transcribeAudio } = require('./transcriber');
 const { _processChatGemini, _processChatOpenAI, _processChatClaude } = require('./chatProcessor');
 const ragService = require('../services/ragService');
 
@@ -62,31 +61,7 @@ class AIService {
     }
   }
 
-  async processAudioRequest(config, base64Audio, base64Image, mimeType) {
-    let { selectedModel, apiKeys } = config;
-    const apiKey = apiKeys[selectedModel];
-    if (!apiKey || apiKey.trim() === '') throw new Error(`API Key cho model ${selectedModel.toUpperCase()} chưa được cấu hình. Vui lòng cập nhật trong phần cài đặt.`);
 
-    try {
-      const boundBuildPrompt = (cfg) => this.buildPrompt(cfg);
-      const boundRetry = (fn, r, d) => this.retryWithBackoff(fn, r, d);
-      switch (selectedModel) {
-        case 'gemini':
-          return await askGeminiWithAudio(apiKey, base64Audio, base64Image, mimeType, config, this.contextText, boundRetry);
-        case 'openai': {
-          const text = await transcribeAudio(config, base64Audio, mimeType);
-          return await askOpenAIWithText(apiKey, base64Image, text, config, boundBuildPrompt);
-        }
-        case 'claude': {
-          const text = await transcribeAudio(config, base64Audio, mimeType);
-          return await askClaudeWithText(apiKey, base64Image, text, config, boundBuildPrompt);
-        }
-        default: throw new Error(`Model không hợp lệ: ${selectedModel}`);
-      }
-    } catch (e) {
-      throw new Error(this._translateError(e, selectedModel.toUpperCase()));
-    }
-  }
 
   async processChatMessage(config, messageText, attachments, conversationHistory, modelOverride = null) {
     let { selectedModel, apiKeys, selectedSpecificModel, thinkingLevel, reasoningEffort, claudeEffort, claudeThinking } = config;

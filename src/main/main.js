@@ -6,7 +6,7 @@ const { getOverlayWindow } = require('./windows/overlayWindow');
 
 const { registerWindowHandlers } = require('./ipc/windowHandlers');
 const { registerConfigHandlers } = require('./ipc/configHandlers');
-const { registerCaptureHandlers, captureAndProcess, startAutoCapture, stopAutoListen, startAutoListen, stopAutoCapture, isAutoCapturing, isAutoListening, restartAutoCapture } = require('./ipc/captureHandlers');
+const { registerCaptureHandlers, captureAndProcess, startAutoCapture, stopAutoListen, startAutoListen, stopAutoCapture, isAutoCapturing, isAutoListening, restartAutoCapture, toggleManualSTT } = require('./ipc/captureHandlers');
 const { registerChatHandlers } = require('./ipc/chatHandlers');
 
 function registerGlobalHotkeys() {
@@ -22,6 +22,7 @@ function registerGlobalHotkeys() {
       if (overlayWindow.isVisible()) overlayWindow.hide();
       else overlayWindow.show();
     },
+    onToggleManualSTT: () => toggleManualSTT(),
     onSelectRegion: () => {
       const { createRegionWindow } = require('./windows/regionWindow');
       createRegionWindow();

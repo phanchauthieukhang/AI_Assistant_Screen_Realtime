@@ -123,6 +123,87 @@ function registerChatHandlers() {
       return { success: false, error: error.message };
     }
   });
+  ipcMain.handle('chat:branch', async (event, conversationId, messageId) => {
+    try {
+      const newConv = storage.branchConversation(conversationId, messageId);
+      if (!newConv) return { success: false, error: 'Không tìm thấy hội thoại hoặc tin nhắn' };
+      
+      const chatWindow = getChatWindow();
+      if (chatWindow) chatWindow.webContents.send('conversation-created', newConv);
+      
+      return { success: true, conversationId: newConv.id };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('chat:regenerate', async (event, conversationId, messageId) => {
+    try {
+      const conv = storage.getConversation(conversationId);
+      if (!conv) return { success: false, error: 'Không tìm thấy hội thoại' };
+
+      const msgIndex = conv.messages.findIndex(m => m.id === messageId);
+      if (msgIndex === -1) return { success: false, error: 'Không tìm thấy tin nhắn' };
+
+      const targetMsg = conv.messages[msgIndex];
+      if (targetMsg.role !== 'assistant') {
+        return { success: false, error: 'Chỉ có thể tạo lại phản hồi của AI' };
+      }
+
+      let userMsgIndex = -1;
+      for (let i = msgIndex - 1; i >= 0; i--) {
+        if (conv.messages[i].role === 'user') {
+          userMsgIndex = i;
+          break;
+        }
+      }
+
+      if (userMsgIndex === -1) {
+        return { success: false, error: 'Không tìm thấy câu hỏi của người dùng' };
+      }
+
+      const userMsg = conv.messages[userMsgIndex];
+      let targetConvId = conversationId;
+
+      const chatWindow = getChatWindow();
+
+      if (msgIndex < conv.messages.length - 1) {
+        const newConv = storage.branchConversation(conversationId, userMsg.id);
+        if (!newConv) return { success: false, error: 'Lỗi khi rẽ nhánh' };
+        targetConvId = newConv.id;
+        
+        if (chatWindow) chatWindow.webContents.send('conversation-created', newConv);
+      } else {
+        storage.deleteMessage(conversationId, messageId);
+      }
+
+      if (chatWindow) {
+        chatWindow.webContents.send('status-update', 'Đang tạo lại...');
+        if (targetConvId !== conversationId) {
+          chatWindow.webContents.send('chat:switched-branch', targetConvId);
+        }
+      }
+
+      const targetConv = storage.getConversation(targetConvId);
+      const history = targetConv.messages.slice(0, -1);
+      const config = storage.getConfig();
+      
+      const answer = await aiService.processChatMessage(config, userMsg.content, userMsg.attachments || [], history);
+      
+      const aiMsg = storage.addMessage(targetConvId, 'assistant', answer);
+      
+      if (chatWindow) {
+        chatWindow.webContents.send('new-chat-message', { conversationId: targetConvId, message: aiMsg });
+        chatWindow.webContents.send('status-update', 'Sẵn sàng');
+      }
+
+      return { success: true, conversationId: targetConvId };
+    } catch (error) {
+      const chatWindow = getChatWindow();
+      if (chatWindow) chatWindow.webContents.send('status-update', `Lỗi: ${error.message}`);
+      return { success: false, error: error.message };
+    }
+  });
 }
 
 module.exports = { registerChatHandlers };

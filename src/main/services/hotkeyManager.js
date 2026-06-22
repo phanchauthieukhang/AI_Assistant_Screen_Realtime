@@ -7,7 +7,8 @@ class HotkeyManager {
       toggleAuto: 'Ctrl+Shift+A',
       toggleOverlay: 'Ctrl+Shift+H',
       selectRegion: 'Ctrl+Shift+R',
-      toggleListen: 'Ctrl+Shift+V'
+      toggleListen: 'Ctrl+Shift+V',
+      toggleManualSTT: 'Alt+Space'
     };
     this.callbacks = {};
   }
@@ -61,6 +62,14 @@ class HotkeyManager {
         this.callbacks.onSelectRegion();
       });
       if (!ok) console.error(`Registration failed for shortcut: ${this.shortcuts.selectRegion}`);
+    }
+
+    // Register Toggle Manual STT Shortcut
+    if (this.shortcuts.toggleManualSTT && this.callbacks.onToggleManualSTT) {
+      const ok = globalShortcut.register(this.shortcuts.toggleManualSTT, () => {
+        this.callbacks.onToggleManualSTT();
+      });
+      if (!ok) console.error(`Registration failed for shortcut: ${this.shortcuts.toggleManualSTT}`);
     }
   }
 

@@ -117,153 +117,137 @@ window.api.onListenStatusChange((isListening) => {
   }
 });
 
-// Audio Recording and Silence Detection (VAD) Logic
+// STT (Speech-to-Text) Logic
+let recognition = null;
+let finalTranscript = '';
+let silenceTimer = null;
+let isManualListening = false;
+let liveTranscriptDiv = document.getElementById('live-transcript');
+
+function initSpeechRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    console.error("Trình duyệt không hỗ trợ Web Speech API.");
+    return null;
+  }
+  
+  const rc = new SpeechRecognition();
+  rc.continuous = true;
+  rc.interimResults = true;
+  rc.lang = 'vi-VN'; 
+  
+  rc.onresult = (event) => {
+    let interimTranscript = '';
+    
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+      if (event.results[i].isFinal) {
+        finalTranscript += event.results[i][0].transcript + ' ';
+      } else {
+        interimTranscript += event.results[i][0].transcript;
+      }
+    }
+    
+    liveTranscriptDiv.style.display = 'block';
+    liveTranscriptDiv.textContent = `Đang nghe: "${finalTranscript} ${interimTranscript}"`;
+    
+    if (isAutoListening) {
+      clearTimeout(silenceTimer);
+      silenceTimer = setTimeout(() => {
+        if (finalTranscript.trim() !== '') {
+          sendSTTAndRestart();
+        }
+      }, 500); // 0.5s pause as user requested
+    }
+  };
+  
+  rc.onerror = (event) => {
+    console.error("STT Error:", event.error);
+    if (event.error === 'not-allowed') {
+      statusLabel.textContent = `Lỗi Micro: Chưa cấp quyền`;
+      stopAudioRecording(false);
+    }
+  };
+  
+  rc.onend = () => {
+    if (isAutoListening || isManualListening) {
+      try { rc.start(); } catch(e){}
+    }
+  };
+  
+  return rc;
+}
+
 async function startAudioRecording() {
   if (isRecording) return;
+  isRecording = true;
+  finalTranscript = '';
+  liveTranscriptDiv.style.display = 'none';
+  liveTranscriptDiv.textContent = '';
   
-  try {
-    const config = await window.api.getConfig();
-    const sourceMode = config.audioSource || 'mic';
-    
-    let stream;
-    if (sourceMode === 'system') {
-      const sources = await window.api.getDesktopSources();
-      if (!sources || sources.length === 0) {
-        throw new Error("Không thể lấy nguồn để thu âm hệ thống.");
-      }
-      const screenSourceId = sources[0].id;
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          mandatory: {
-            chromeMediaSource: 'desktop',
-            chromeMediaSourceId: screenSourceId
-          }
-        },
-        video: {
-          mandatory: {
-            chromeMediaSource: 'desktop',
-            chromeMediaSourceId: screenSourceId
-          }
-        }
-      });
-      stream.getVideoTracks().forEach(track => track.stop());
-    } else {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    }
-    
-    audioStream = stream;
-    audioChunks = [];
-    isRecording = true;
-    
-    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data && event.data.size > 0) {
-        audioChunks.push(event.data);
-      }
-    };
-    
-    mediaRecorder.onstop = async () => {
-      isRecording = false;
-      if (audioChunks.length > 0 && isAutoListening) {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-          const base64Audio = reader.result.split(',')[1];
-          const result = await window.api.processAudio({ base64Audio, mimeType: 'audio/webm' });
-          
-          // Auto restart recording after processing, if still in listening mode
-          if (isAutoListening) {
-            startAudioRecording();
-          }
-        };
-        reader.readAsDataURL(audioBlob);
-      }
-    };
-    
-    mediaRecorder.start();
-    
-    // Silence Detection (VAD) using AnalyserNode
-    if (config.autoSilenceDetection !== false) {
-      audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      audioSourceNode = audioContext.createMediaStreamSource(stream);
-      analyserNode = audioContext.createAnalyser();
-      analyserNode.fftSize = 2048;
-      audioSourceNode.connect(analyserNode);
-      
-      const bufferLength = analyserNode.fftSize;
-      const dataArray = new Float32Array(bufferLength);
-      const threshold = config.silenceThreshold !== undefined ? config.silenceThreshold : 0.02;
-      const silenceDuration = 500; // 0.5 seconds of silence
-      silenceStart = null;
-      
-      const checkSilence = () => {
-        if (!isRecording) return;
-        
-        analyserNode.getFloatTimeDomainData(dataArray);
-        
-        let sumSquares = 0.0;
-        for (let i = 0; i < bufferLength; i++) {
-          sumSquares += dataArray[i] * dataArray[i];
-        }
-        const rms = Math.sqrt(sumSquares / bufferLength);
-        
-        if (rms < threshold) {
-          if (silenceStart === null) {
-            silenceStart = Date.now();
-          } else if (Date.now() - silenceStart > silenceDuration) {
-            console.log("Silence detected! Automatically processing answer...");
-            stopAudioRecording(true);
-            return;
-          }
-        } else {
-          silenceStart = null;
-        }
-        
-        if (isRecording) {
-          checkSilenceIntervalId = requestAnimationFrame(checkSilence);
-        }
-      };
-      
-      checkSilenceIntervalId = requestAnimationFrame(checkSilence);
-    }
-  } catch (error) {
-    console.error("Lỗi khởi tạo âm thanh:", error);
-    // Print user friendly error message on overlay
-    statusLabel.textContent = `Lỗi ghi âm: ${error.message}`;
-    statusLabel.style.color = '#ef4444';
-    listenBadge.style.display = 'none';
-    btnRecord.classList.remove('recording-active');
+  if (!recognition) {
+    recognition = initSpeechRecognition();
+  }
+  
+  if (recognition) {
+    try {
+      recognition.start();
+    } catch(e) {}
+  } else {
+    statusLabel.textContent = `Lỗi: Không hỗ trợ STT`;
     isAutoListening = false;
+    isRecording = false;
+  }
+}
+
+async function sendSTTAndRestart() {
+  const textToSend = finalTranscript.trim();
+  finalTranscript = ''; 
+  liveTranscriptDiv.style.display = 'none';
+  
+  if (textToSend !== '') {
+    try { recognition.stop(); } catch(e){}
+    
+    await window.api.processSTT(textToSend);
+    
+    if (isAutoListening && !isManualListening) {
+      try { recognition.start(); } catch(e){}
+    }
   }
 }
 
 function stopAudioRecording(process = true) {
   if (!isRecording) return;
   isRecording = false;
+  clearTimeout(silenceTimer);
   
-  if (checkSilenceIntervalId) {
-    cancelAnimationFrame(checkSilenceIntervalId);
-    checkSilenceIntervalId = null;
+  if (recognition) {
+    try { recognition.stop(); } catch(e){}
   }
   
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-    if (!process) {
-      audioChunks = [];
-    }
-    mediaRecorder.stop();
-  }
-  
-  if (audioContext) {
-    try {
-      audioContext.close();
-    } catch(e){}
-    audioContext = null;
-  }
-  if (audioStream) {
-    audioStream.getTracks().forEach(track => track.stop());
-    audioStream = null;
+  if (process && finalTranscript.trim() !== '') {
+    sendSTTAndRestart();
+  } else {
+    liveTranscriptDiv.style.display = 'none';
+    finalTranscript = '';
   }
 }
+
+window.api.onManualSTTChange((isListening) => {
+  isManualListening = isListening;
+  if (isListening) {
+    if (isAutoListening) {
+      isAutoListening = false;
+      btnRecord.classList.remove('recording-active');
+      listenBadge.style.display = 'none';
+    }
+    statusLabel.textContent = 'Đang nghe (Thủ công)...';
+    statusLabel.style.color = '#f59e0b';
+    startAudioRecording();
+  } else {
+    stopAudioRecording(true);
+  }
+});
+
 
 // Receive AI answers
 window.api.onNewAnswer((answer) => {
